@@ -35,7 +35,7 @@ namespace artificer_rubicon_hell_bonanza
                 new OpLabel(10f, 540f, "Freedom timer (-1:off;sec):"),
                 new OpCheckBox(this.logging, new UnityEngine.Vector2(180f, 505f)),
                 new OpLabel(10f, 460f, "Total Genocide Kill Everybody FUCK YEAH!!!!:"),
-                new OpCheckBox(this.logging, new UnityEngine.Vector2(180f, 460f)),
+                new OpCheckBox(this.genocideMode, new UnityEngine.Vector2(180f, 460f)),
                 new OpLabel(10f, 505f, "Logging (off to reduce lag):"),
                 new OpListBox(this.currentBanlist, new UnityEngine.Vector2(500f, 480f), 100, 4, true),
                 new OpLabel(250f, 545f, "Current banlist:\nFunny: no bans\nHardcore: Technically unkillable creatures\nCasual: Unkillable creatures\nNoCritters: Casual+small buggers"),
