@@ -34,6 +34,16 @@ namespace artificer_rubicon_hell_bonanza
             On.RainWorld.Update+=RainWorld_Update;
             On.RainWorld.OnModsInit+=RainWorld_OnModsInit;
             On.RainWorldGame.ctor+=this.RainWorldGame_ctor;
+            On.Creature.NewRoom+=this.Creature_NewRoom;
+        }
+
+        private void Creature_NewRoom(On.Creature.orig_NewRoom orig, Creature self, Room newRoom)
+        {
+            orig(self, newRoom);
+            if(this.manager!=null&&this.manager.triggered&&this.manager.funmode)
+            {
+                this.manager.AddNewCreature(self);
+            }
         }
 
         private void RainWorldGame_ctor(On.RainWorldGame.orig_ctor orig, RainWorldGame self, ProcessManager manager)
@@ -64,7 +74,6 @@ namespace artificer_rubicon_hell_bonanza
         {
             orig(self, newRoom);
             this.player=self;
-            //Logger.LogMessage("player updated");
             if(this.manager!=null&&this.manager.room.abstractRoom.name==newRoom.abstractRoom.name)
             {
                 return;
@@ -156,29 +165,12 @@ namespace artificer_rubicon_hell_bonanza
             public List<AbstractCreature> creatureList = new List<AbstractCreature>();
             public bool triggered;
             private Player myPlayer;
-            //public List<MultiChain> multiChains = new List<MultiChain>();
             public Dictionary<AbstractCreature, MultiChain> multiChains = new Dictionary<AbstractCreature, MultiChain>();
             public bool chainsActive;
             private Artificer_HellOptions options;
             public string currentBanlist = "funny";
             public List<int> chainedShortcuts = new List<int>();
-            //public CreatureTemplate.Type[][] banlist = new CreatureTemplate.Type[][] //0 - funny; 1 - hardcore; 2 - casual; 3 - casualnocritters
-            //{ 
-            //    new CreatureTemplate.Type[] {CreatureTemplate.Type.Slugcat},
-            //    new CreatureTemplate.Type[] {CreatureTemplate.Type.Slugcat,
-            //        CreatureTemplate.Type.GarbageWorm},
-            //    new CreatureTemplate.Type[] {CreatureTemplate.Type.Slugcat,
-            //        CreatureTemplate.Type.GarbageWorm,
-            //        CreatureTemplate.Type.TempleGuard,
-            //        CreatureTemplate.Type.BigEel,
-            //        CreatureTemplate.Type.Deer},
-            //    new CreatureTemplate.Type[] {CreatureTemplate.Type.Slugcat,
-            //        CreatureTemplate.Type.Overseer, CreatureTemplate.Type.GarbageWorm,
-            //        CreatureTemplate.Type.TempleGuard, CreatureTemplate.Type.BigEel,
-            //        CreatureTemplate.Type.Deer, CreatureTemplate.Type.Spider,
-            //        CreatureTemplate.Type.Leech,
-            //        CreatureTemplate.Type.Fly},
-            //};
+            public bool funmode = false;
             public Dictionary<string, Dictionary<CreatureTemplate.Type, bool>> banlist = new Dictionary<string, Dictionary<CreatureTemplate.Type, bool>>
             {
                 {
@@ -230,6 +222,7 @@ namespace artificer_rubicon_hell_bonanza
                 this.myPlayer=player;
                 this.l=this.options.logging.Value;
                 this.currentBanlist=this.options.currentBanlist.Value;
+                this.funmode=this.options.genocideMode.Value;
                 if(l) this.log.LogMessage("created manager instance");
             }
             public void OnRoomEnter(Room room)
@@ -558,6 +551,13 @@ namespace artificer_rubicon_hell_bonanza
                 this.multiChains=null;
                 this.myPlayer=null;
                 //GC.Collect();
+            }
+
+            internal void AddNewCreature(Creature creature)
+            {
+                this.creatureList.Add(creature.abstractCreature);
+                this.DoRedundancyCreatureCheck();
+                this.AssignNewChain();
             }
         }
     }
