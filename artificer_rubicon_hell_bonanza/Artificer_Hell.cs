@@ -30,10 +30,6 @@ namespace artificer_rubicon_hell_bonanza
         }
         public void OnEnable()
         {
-            On.Player.NewRoom+=Player_NewRoom;
-            On.RainWorld.Update+=RainWorld_Update;
-            On.RainWorld.OnModsInit+=RainWorld_OnModsInit;
-            On.RainWorldGame.ctor+=this.RainWorldGame_ctor;
             On.Creature.NewRoom+=this.Creature_NewRoom;
         }
 
