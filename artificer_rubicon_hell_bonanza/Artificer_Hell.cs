@@ -136,6 +136,15 @@ namespace artificer_rubicon_hell_bonanza
             }
             if(this.manager!=null&&this.manager.room!=null&&this.manager.room.abstractRoom.name==newRoom.abstractRoom.name)
             {
+                if(this.manager.CreaturesToAdd.Count>0)
+                {
+                    for(int i = 0;i<this.manager.CreaturesToAdd.Count;i++)
+                    {
+                        this.Logger.LogDebug($"added from the OnEnter buffer: {this.manager.CreaturesToAdd[i].abstractCreature.creatureTemplate.name} {this.manager.CreaturesToAdd[i].abstractCreature.ID}");
+                        this.manager.AddNewCreature(this.manager.CreaturesToAdd[i]);
+                    }
+                    this.manager.CreaturesToAdd.Clear();
+                }
                 return;
             }
             if(this.manager!=null)
@@ -268,6 +277,7 @@ namespace artificer_rubicon_hell_bonanza
             private RainWorldGame rwgInstance;
             public bool l = true;
             private bool wantsToDispose;
+            public List<Creature> CreaturesToAdd = new List<Creature>();
 
             public CustomHRGuardManager(Player player, BepInEx.Logging.ManualLogSource log, Artificer_HellOptions options, RainWorldGame rwgInstance)
             {
@@ -648,6 +658,12 @@ namespace artificer_rubicon_hell_bonanza
             {
                 if(creature!=null && creature.room==this.room)
                 {
+                    if (this.myPlayer.inShortcut)
+                    {
+                        this.CreaturesToAdd.Add(creature);
+                        if(l) this.log.LogDebug($"added a creature to the OnEnter buffer: {creature.abstractCreature.creatureTemplate.name} {creature.abstractCreature.ID}");
+                        return;
+                    }
                     if(l) this.log.LogDebug($"Added new creature on enter! {creature.abstractCreature.creatureTemplate.name}|{creature.abstractCreature.ID}");
                     this.room.PlaySound(MoreSlugcatsEnums.MSCSoundID.Chain_Lock, 0f, 0.8f, global::UnityEngine.Random.value*0.5f+5f);
                     if(!this.creatureList.Contains(creature.abstractCreature)) this.creatureList.Add(creature.abstractCreature);
