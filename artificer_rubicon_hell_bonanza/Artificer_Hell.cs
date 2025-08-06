@@ -17,7 +17,7 @@ using RewiredConsts;
 
 namespace artificer_rubicon_hell_bonanza
 {
-    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.32")]
+    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.33")]
     public class Artificer_Hell : BaseUnityPlugin
     {
         public Player player;
@@ -31,12 +31,40 @@ namespace artificer_rubicon_hell_bonanza
         public void OnEnable()
         {
             On.ArtificialIntelligence.Update+=this.ArtificialIntelligence_Update;
+            On.VultureAI.CreatureSpotted+=this.VultureAI_CreatureSpotted;
             On.Creature.NewRoom+=this.Creature_NewRoom;
             On.Player.NewRoom+=this.Player_NewRoom;
             On.RainWorld.Update+=this.RainWorld_Update;
             On.RainWorld.OnModsInit+=this.RainWorld_OnModsInit;
             On.RainWorldGame.ctor+=this.RainWorldGame_ctor;
         }
+
+        private void VultureAI_CreatureSpotted(On.VultureAI.orig_CreatureSpotted orig, VultureAI self, bool firstSpot, Tracker.CreatureRepresentation creatureRep)
+        {
+            orig(self, firstSpot, creatureRep);
+            if(this.manager.l) this.Logger.LogDebug($"Vulture saw something!");
+            VultureAI vulture = (VultureAI)self;
+            Dictionary<CreatureTemplate.Type, bool> banlist = this.manager.banlist[this.manager.currentBanlist];
+            if(this.manager!=null&&this.manager.creatureList!=null&&this.manager.creatureList.Contains(vulture.creature)) return;
+            if(creatureRep.representedCreature.creatureTemplate.type==CreatureTemplate.Type.Slugcat&&!banlist.ContainsKey(CreatureTemplate.Type.Vulture)&&!banlist.ContainsKey(CreatureTemplate.Type.KingVulture))
+            {
+                if(this.manager.l) this.Logger.LogDebug($"Vulture spotted a slugcat! {vulture.vulture.abstractCreature.ID}");
+                if(this.manager==null)
+                {
+                    if(this.manager.l) this.Logger.LogDebug($"Initiated new manager instance!");
+                    this.manager=new CustomHRGuardManager(this.player, this.Logger, this.options, this.rwg);
+                    this.manager?.OnRoomEnter(vulture.vulture.room);
+                }
+                if(this.manager!=null&&this.manager.creatureList!=null)
+                {
+                    if(this.manager.l) this.Logger.LogDebug($"Added a vulture because it saw the player! {vulture.vulture.abstractCreature.ID}");
+                    this.manager.AddNewCreature(vulture.vulture);
+                    this.manager.AssignNewChain();
+                }
+            }
+        }
+
+
 
         private void ArtificialIntelligence_Update(On.ArtificialIntelligence.orig_Update orig, ArtificialIntelligence self)
         {
@@ -48,8 +76,8 @@ namespace artificer_rubicon_hell_bonanza
                 {
                     if(self.creature.world.game.Players[j].realizedCreature!=null&&!(self.creature.world.game.Players[j].realizedCreature as Player).dead)
                     {
-                        if(self.creature.Room!=self.creature.world.game.Players[j].Room)
-                        {
+                        if(self.creature.Room!=self.creature.world.game.Players[j].Room && !(self is VultureAI))
+                        { 
                             self.tracker.SeeCreature(self.creature.world.game.Players[j]);
                             break;
                         }
@@ -75,7 +103,7 @@ namespace artificer_rubicon_hell_bonanza
                     {
                         if(!this.manager.creatureList.Contains(self.abstractCreature))
                         {
-                            if((self.Template.type==CreatureTemplate.Type.Vulture||self.Template.type==CreatureTemplate.Type.KingVulture)&&UnityEngine.Random.value>0.5) return;
+                            if((self.Template.type==CreatureTemplate.Type.Vulture||self.Template.type==CreatureTemplate.Type.KingVulture)) return;
                             //this.Logger.LogMessage($"manager is not null and funmode is on! adding creature to the existing list!");
                             this.manager.AddNewCreature(self);
                             //this.manager.LockPlayer(true);
@@ -140,7 +168,7 @@ namespace artificer_rubicon_hell_bonanza
                 {
                     for(int i = 0;i<this.manager.CreaturesToAdd.Count;i++)
                     {
-                        this.Logger.LogDebug($"added from the OnEnter buffer: {this.manager.CreaturesToAdd[i].abstractCreature.creatureTemplate.name} {this.manager.CreaturesToAdd[i].abstractCreature.ID}");
+                        if(this.options.logging.Value)this.Logger.LogDebug($"added from the OnEnter buffer: {this.manager.CreaturesToAdd[i].abstractCreature.creatureTemplate.name} {this.manager.CreaturesToAdd[i].abstractCreature.ID}");
                         this.manager.AddNewCreature(this.manager.CreaturesToAdd[i]);
                     }
                     this.manager.CreaturesToAdd.Clear();
@@ -459,7 +487,7 @@ namespace artificer_rubicon_hell_bonanza
                             //if(l) log.LogDebug($"updated creatures: {c}");
 
                         }
-                        int c = 0;
+                        //int c = 0;
                         foreach(KeyValuePair<AbstractCreature, MultiChain> KV in this.multiChains)
                         {
                             if(KV.Value!=null)
@@ -481,7 +509,7 @@ namespace artificer_rubicon_hell_bonanza
             }
 
 
-            private void AssignNewChain()
+            public void AssignNewChain()
             {
                 if (this.creatureList == null)
                 {
@@ -668,11 +696,11 @@ namespace artificer_rubicon_hell_bonanza
                     this.room.PlaySound(MoreSlugcatsEnums.MSCSoundID.Chain_Lock, 0f, 0.8f, global::UnityEngine.Random.value*0.5f+5f);
                     if(!this.creatureList.Contains(creature.abstractCreature)) this.creatureList.Add(creature.abstractCreature);
                     this.DoRedundancyCreatureCheck();
-                    this.AssignNewChain();
                     if(this.triggered==false)
                     {
                         this.LockPlayer(false);
                     };
+                    this.AssignNewChain();
                 }
             }
         }
