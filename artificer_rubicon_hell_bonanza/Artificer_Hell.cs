@@ -17,7 +17,7 @@ using RewiredConsts;
 
 namespace artificer_rubicon_hell_bonanza
 {
-    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.33")]
+    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.35")]
     public class Artificer_Hell : BaseUnityPlugin
     {
         public Player player;
@@ -42,12 +42,26 @@ namespace artificer_rubicon_hell_bonanza
         private void VultureAI_CreatureSpotted(On.VultureAI.orig_CreatureSpotted orig, VultureAI self, bool firstSpot, Tracker.CreatureRepresentation creatureRep)
         {
             orig(self, firstSpot, creatureRep);
-            if(this.manager.l) this.Logger.LogDebug($"Vulture saw something!");
             VultureAI vulture = (VultureAI)self;
             Dictionary<CreatureTemplate.Type, bool> banlist = this.manager.banlist[this.manager.currentBanlist];
+            //if(this.manager.l)
+            //{
+            //    string s = "";
+            //    foreach(KeyValuePair<CreatureTemplate.Type, bool> kv in banlist)
+            //    {
+            //        s+=kv.Key.ToString()+"\n";
+            //    }
+            //    this.Logger.LogMessage($"current banlist in vulturespotted:\n{s}");
+            //}
             if(this.manager!=null&&this.manager.creatureList!=null&&this.manager.creatureList.Contains(vulture.creature)) return;
-            if(creatureRep.representedCreature.creatureTemplate.type==CreatureTemplate.Type.Slugcat&&!banlist.ContainsKey(CreatureTemplate.Type.Vulture)&&!banlist.ContainsKey(CreatureTemplate.Type.KingVulture))
+            if(banlist.ContainsKey(CreatureTemplate.Type.Vulture)||banlist.ContainsKey(CreatureTemplate.Type.KingVulture))
             {
+                //if(this.manager.l) this.Logger.LogDebug("Vulture is in banlist! Do not add anything.");
+                return;
+            };
+            if(creatureRep.representedCreature.creatureTemplate.type==CreatureTemplate.Type.Slugcat)
+            {
+                if(this.manager.creatureList.Contains(vulture.creature)) return;
                 if(this.manager.l) this.Logger.LogDebug($"Vulture spotted a slugcat! {vulture.vulture.abstractCreature.ID}");
                 if(this.manager==null)
                 {
@@ -104,7 +118,7 @@ namespace artificer_rubicon_hell_bonanza
                         if(!this.manager.creatureList.Contains(self.abstractCreature))
                         {
                             if((self.Template.type==CreatureTemplate.Type.Vulture||self.Template.type==CreatureTemplate.Type.KingVulture)) return;
-                            //this.Logger.LogMessage($"manager is not null and funmode is on! adding creature to the existing list!");
+                            if(this.manager.l)this.Logger.LogDebug($"manager is not null and funmode is on! adding creature to the existing list!");
                             this.manager.AddNewCreature(self);
                             //this.manager.LockPlayer(true);
                         }
@@ -201,14 +215,14 @@ namespace artificer_rubicon_hell_bonanza
                 for(int k = 0;k<exits.Count;k++)
                 {
                     Vector2 vector = this.room.MiddleOfTile(this.room.shortcuts[exits[k]].StartTile)+IntVector2.ToVector2(this.room.ShorcutEntranceHoleDirection(this.room.shortcuts[exits[k]].StartTile))*15f;
-                    VoidChain voidChain = new VoidChain(this.room, vector, creature.realizedCreature.mainBodyChunk.pos);
+                    VoidChain voidChain = new VoidChain(this.room, vector, creature.realizedCreature.mainBodyChunk.pos + new Vector2(0.01f, 0.01f)); //matrix chain visual bug fix attempt by making sure the creature is never perfectly on the middle of the tile
                     this.room.AddObject(voidChain);
                     this.chains.Add(voidChain);
                     //this.room.shortcuts[k].shortCutType=ShortcutData.Type.DeadEnd;
                 }
                 //log.LogDebug($"mchain ctor; count:{this.chains.Count}");
                 this.log=log;
-                this.log.LogDebug($"I am a chain! {this.creature.creatureTemplate.name}{this.creature.ID}");
+                this.log.LogDebug($"I am a chain! {this.creature.creatureTemplate.name}{this.creature.ID} | creaturepos: {creature.realizedCreature.mainBodyChunk.pos}");
             }
             public void Update()
             {
@@ -259,7 +273,7 @@ namespace artificer_rubicon_hell_bonanza
             public Dictionary<AbstractCreature, MultiChain> multiChains = new Dictionary<AbstractCreature, MultiChain>();
             public bool chainsActive;
             private Artificer_HellOptions options;
-            public string currentBanlist = "funny";
+            public string currentBanlist = "Funny";
             public List<int> chainedShortcuts = new List<int>();
             public bool funmode = false;
             public Dictionary<string, Dictionary<CreatureTemplate.Type, bool>> banlist = new Dictionary<string, Dictionary<CreatureTemplate.Type, bool>>
@@ -275,6 +289,10 @@ namespace artificer_rubicon_hell_bonanza
                     {
                         {CreatureTemplate.Type.Slugcat, true},
                         {CreatureTemplate.Type.GarbageWorm, true},
+                        {CreatureTemplate.Type.CicadaA, true},
+                        {CreatureTemplate.Type.CicadaB, true},
+                        {CreatureTemplate.Type.KingVulture, true},
+                        {CreatureTemplate.Type.Vulture, true},
                     }
                 },
                 {
@@ -285,6 +303,10 @@ namespace artificer_rubicon_hell_bonanza
                         {CreatureTemplate.Type.TempleGuard, true},
                         {CreatureTemplate.Type.BigEel, true},
                         {CreatureTemplate.Type.Deer, true},
+                        {CreatureTemplate.Type.CicadaA, true},
+                        {CreatureTemplate.Type.CicadaB, true},
+                        {CreatureTemplate.Type.KingVulture, true},
+                        {CreatureTemplate.Type.Vulture, true},
                     }
                 },
                 {
@@ -299,6 +321,10 @@ namespace artificer_rubicon_hell_bonanza
                         {CreatureTemplate.Type.Spider, true},
                         {CreatureTemplate.Type.Leech, true},
                         {CreatureTemplate.Type.Fly, true},
+                        {CreatureTemplate.Type.CicadaA, true},
+                        {CreatureTemplate.Type.CicadaB, true},
+                        {CreatureTemplate.Type.KingVulture, true},
+                        {CreatureTemplate.Type.Vulture, true},
                     }
                 },
             };
@@ -317,7 +343,7 @@ namespace artificer_rubicon_hell_bonanza
                 this.l=this.options.logging.Value;
                 this.currentBanlist=this.options.currentBanlist.Value;
                 this.funmode=this.options.genocideMode.Value;
-                if(l) this.log.LogDebug("created manager instance");
+                if(l) this.log.LogDebug($"created manager instance; current banlist {this.currentBanlist}");
             }
             public void OnRoomEnter(Room room)
             {
@@ -385,6 +411,16 @@ namespace artificer_rubicon_hell_bonanza
             private void GetCreatureList()
             {
                 if(l) log.LogDebug("updating creature list");
+                if(this.room.abstractRoom.creatures.Count==0) return;
+                //if(l)
+                //{
+                //    string s = "";
+                //    foreach(KeyValuePair<CreatureTemplate.Type, bool> kv in this.banlist[currentBanlist])
+                //    {
+                //        s+=kv.Key.ToString()+"\n";
+                //    }
+                //    this.log.LogMessage($"current banlist in vulturespotted:\n{s}");
+                //}
                 for(int i = 0;i<this.room.abstractRoom.creatures.Count;i++)
                 {
                     AbstractCreature creature = this.room.abstractRoom.creatures[i];
@@ -462,8 +498,8 @@ namespace artificer_rubicon_hell_bonanza
                                     this.multiChains[creature].Dispose();
                                     this.multiChains.Remove(creature);
                                     if(l) this.log.LogDebug($"chain removed");
-                                    this.AssignNewChain();
                                 }
+                                this.AssignNewChain();
                                 if(l) this.log.LogDebug($"removed dead creature {creature.creatureTemplate.name};id:{creature.ID};listcount:{this.multiChains.Count}");
                                 //foreach(KeyValuePair<AbstractCreature, MultiChain> KV in this.multiChains)
                                 //{
@@ -523,9 +559,16 @@ namespace artificer_rubicon_hell_bonanza
                 }
                 int index = this.creatureList.Count>3 ? 3 : this.creatureList.Count-1;
                 if(l) this.log.LogDebug($"assign new chain called|creatures count:{this.creatureList.Count}; index: {index}");
+                ContinueChecking:
                 if(this.multiChains.ContainsKey(this.creatureList[index]))
                 {
-                    if(l) log.LogDebug("There's already a creature with key like that!");
+                    //if(l) log.LogDebug("There's already a creature with key like that!");
+                    if(index>0)
+                    {
+                        //if(l) log.LogDebug("decrementing index...");
+                        index--;
+                        goto ContinueChecking;
+                    };
                     return;
                 }
                 this.multiChains.Add(this.creatureList[index], new MultiChain(this.creatureList[index], this.room, this.log, this.chainedShortcuts));
@@ -546,7 +589,7 @@ namespace artificer_rubicon_hell_bonanza
                 //}
             }
 
-            private void DoRedundancyCreatureCheck()
+            public void DoRedundancyCreatureCheck()
             {
                 void HandleChainsAndStuff(AbstractCreature c)
                 {
@@ -555,6 +598,29 @@ namespace artificer_rubicon_hell_bonanza
                     {
                         this.multiChains[c].Dispose();
                         this.multiChains.Remove(c);
+                    }
+                }
+                if(this.creatureList.Count!=this.multiChains.Count && this.multiChains.Count > 3)
+                {
+                    int check = this.creatureList.Count-this.multiChains.Count;
+                    if(l) this.log.LogMessage("Multichain-creature list disparity! Calling assign chains");
+                    this.AssignNewChain();
+                    if(check ==this.creatureList.Count-this.multiChains.Count)
+                    {
+                        if(l) this.log.LogMessage("It's still shit!!! Nuclear option!! Regenerating the whole list!!");
+                        foreach(KeyValuePair<AbstractCreature, MultiChain> chain in this.multiChains)
+                        {
+                            chain.Value.Dispose();
+                        }
+                        this.multiChains=null;
+                        this.multiChains=new Dictionary<AbstractCreature, MultiChain>();
+                        this.creatureList=null;
+                        this.creatureList=new List<AbstractCreature>();
+                        this.GetCreatureList();
+                        for(int i = 0;i<(this.creatureList.Count>=3 ? 3 : this.creatureList.Count);i++)
+                        {
+                            this.AssignNewChain();
+                        }
                     }
                 }
                 string s = "";
@@ -573,27 +639,30 @@ namespace artificer_rubicon_hell_bonanza
                 for(int i = 0;i<this.creatureList.Count;i++)
                 {
                     AbstractCreature c = this.creatureList[i];
-                    if(!this.banlist[this.currentBanlist].TryGetValue(c.creatureTemplate.type, out _)) //redundant but it's basically free so i'll keep it just in case
+                    if(this.banlist[this.currentBanlist].ContainsKey(c.creatureTemplate.type))
                     {
-                        if(c.Room!=this.room.abstractRoom)
-                        {
-                            if(l) this.log.LogDebug($"removed {c.creatureTemplate.name}|wrong room; creature is in:{c.Room.name}, manager is in:{this.room.abstractRoom.name}");
-                            HandleChainsAndStuff(c);
-                            continue;
-                        }
-                        if(c.realizedCreature.dead)
-                        {
-                            if(l) this.log.LogDebug($"removed {c.creatureTemplate.name}|creature is dead");
-                            HandleChainsAndStuff(c);
-                            continue;
-                        }
-                        if(c.InDen)
-                        {
-                            if(l) this.log.LogDebug($"removed {c.creatureTemplate.name}|creature is in den {c.Room.name}");
-                            HandleChainsAndStuff(c);
-                            continue;
-                        }
+                        if(l) this.log.LogMessage($"SOMEHOW a creature from the banlist ended up INSIDE of the creature list! Removing {c.creatureTemplate.name}; {c.ID}");
+                        HandleChainsAndStuff(c);
                     }
+                    if(c.Room!=this.room.abstractRoom)
+                    {
+                        if(l) this.log.LogDebug($"removed {c.creatureTemplate.name}|wrong room; creature is in:{c.Room.name}, manager is in:{this.room.abstractRoom.name}");
+                        HandleChainsAndStuff(c);
+                        continue;
+                    }
+                    if(c.realizedCreature.dead)
+                    {
+                        if(l) this.log.LogDebug($"removed {c.creatureTemplate.name}|creature is dead");
+                        HandleChainsAndStuff(c);
+                        continue;
+                    }
+                    if(c.InDen)
+                    {
+                        if(l) this.log.LogDebug($"removed {c.creatureTemplate.name}|creature is in den {c.Room.name}");
+                        HandleChainsAndStuff(c);
+                        continue;
+                    }
+
                 }
                 s="";
                 ss="";
@@ -643,7 +712,7 @@ namespace artificer_rubicon_hell_bonanza
                 {
                     KV.Value?.Dispose();
                 }
-                this.wantsToDispose=true;
+                //this.wantsToDispose=true;
             }
 
             public void ConfuseCreatures()
@@ -684,7 +753,7 @@ namespace artificer_rubicon_hell_bonanza
 
             internal void AddNewCreature(Creature creature)
             {
-                if(creature!=null && creature.room==this.room)
+                if(creature!=null && creature.room==this.room && !creature.dead)
                 {
                     if (this.myPlayer.inShortcut)
                     {
@@ -695,12 +764,12 @@ namespace artificer_rubicon_hell_bonanza
                     if(l) this.log.LogDebug($"Added new creature on enter! {creature.abstractCreature.creatureTemplate.name}|{creature.abstractCreature.ID}");
                     this.room.PlaySound(MoreSlugcatsEnums.MSCSoundID.Chain_Lock, 0f, 0.8f, global::UnityEngine.Random.value*0.5f+5f);
                     if(!this.creatureList.Contains(creature.abstractCreature)) this.creatureList.Add(creature.abstractCreature);
-                    this.DoRedundancyCreatureCheck();
                     if(this.triggered==false)
                     {
                         this.LockPlayer(false);
                     };
                     this.AssignNewChain();
+                    this.DoRedundancyCreatureCheck();
                 }
             }
         }
