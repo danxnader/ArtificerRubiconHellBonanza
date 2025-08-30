@@ -15,6 +15,8 @@ namespace artificer_rubicon_hell_bonanza
         public Configurable<bool> genocideMode;
         public Configurable<string> currentBanlist;
         public Configurable<bool> huntedMode;
+        public Configurable<bool> excludeVultures;
+        public Configurable<bool> excludeSquids;
         public Artificer_Hell instance;
         public Artificer_HellOptions(Artificer_Hell instance)
         {
@@ -24,6 +26,8 @@ namespace artificer_rubicon_hell_bonanza
             this.genocideMode = this.config.Bind<bool>("genocideMode", false);
             this.currentBanlist=this.config.Bind<string>("selectedBanlist", "Hardcore", new ConfigAcceptableList<string>(new string[]{"Funny","Hardcore","Casual","NoCritters"}));
             this.huntedMode=this.config.Bind<bool>("huntedMode", false);
+            this.excludeVultures=this.config.Bind<bool>("excludeVultures", true);
+            this.excludeSquids=this.config.Bind<bool>("excludeSquids", true);
             this.instance = instance;
         }
         public override void Initialize()
@@ -42,7 +46,11 @@ namespace artificer_rubicon_hell_bonanza
                 new OpListBox(this.currentBanlist, new UnityEngine.Vector2(500f, 480f), 100, 4, true),
                 new OpLabel(250f, 545f, "Current banlist:\nFunny: no bans\nHardcore: Technically unkillable creatures\nCasual: Unkillable creatures\nNoCritters: Casual+small buggers"),
                 new OpCheckBox(this.huntedMode, new UnityEngine.Vector2(180f, 435f)),
-                new OpLabel(10f, 435f, "Faux-hunted burden:"),
+                new OpLabel(10f, 435f, "Faux-hunted burden:"),   
+                new OpCheckBox(this.excludeVultures, new UnityEngine.Vector2(180f, 405f)),
+                new OpLabel(10f, 405f, "Exclude vultures:"),
+                new OpCheckBox(this.excludeSquids, new UnityEngine.Vector2(180f, 375f)),
+                new OpLabel(10f, 375f, "Exclude squids:"),
             };
             opTab.AddItems(opTabOptions);
         }

@@ -17,7 +17,7 @@ using RewiredConsts;
 
 namespace artificer_rubicon_hell_bonanza
 {
-    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.35")]
+    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.36")]
     public class Artificer_Hell : BaseUnityPlugin
     {
         public Player player;
@@ -43,7 +43,7 @@ namespace artificer_rubicon_hell_bonanza
         {
             orig(self, firstSpot, creatureRep);
             VultureAI vulture = (VultureAI)self;
-            Dictionary<CreatureTemplate.Type, bool> banlist = this.manager.banlist[this.manager.currentBanlist];
+            HashSet<CreatureTemplate.Type> banlist = this.manager.banlist[this.manager.currentBanlist];
             //if(this.manager.l)
             //{
             //    string s = "";
@@ -54,7 +54,7 @@ namespace artificer_rubicon_hell_bonanza
             //    this.Logger.LogMessage($"current banlist in vulturespotted:\n{s}");
             //}
             if(this.manager!=null&&this.manager.creatureList!=null&&this.manager.creatureList.Contains(vulture.creature)) return;
-            if(banlist.ContainsKey(CreatureTemplate.Type.Vulture)||banlist.ContainsKey(CreatureTemplate.Type.KingVulture))
+            if(banlist.Contains(CreatureTemplate.Type.Vulture)||banlist.Contains(CreatureTemplate.Type.KingVulture)||!this.manager.genocide)
             {
                 //if(this.manager.l) this.Logger.LogDebug("Vulture is in banlist! Do not add anything.");
                 return;
@@ -77,9 +77,6 @@ namespace artificer_rubicon_hell_bonanza
                 }
             }
         }
-
-
-
         private void ArtificialIntelligence_Update(On.ArtificialIntelligence.orig_Update orig, ArtificialIntelligence self)
         {
             orig(self);
@@ -120,7 +117,7 @@ namespace artificer_rubicon_hell_bonanza
                             if((self.Template.type==CreatureTemplate.Type.Vulture||self.Template.type==CreatureTemplate.Type.KingVulture)) return;
                             if(this.manager.l)this.Logger.LogDebug($"manager is not null and funmode is on! adding creature to the existing list!");
                             this.manager.AddNewCreature(self);
-                            //this.manager.LockPlayer(true);
+                            this.manager.LockPlayer(true);
                         }
                     }
                     else
@@ -275,56 +272,44 @@ namespace artificer_rubicon_hell_bonanza
             private Artificer_HellOptions options;
             public string currentBanlist = "Funny";
             public List<int> chainedShortcuts = new List<int>();
-            public bool funmode = false;
-            public Dictionary<string, Dictionary<CreatureTemplate.Type, bool>> banlist = new Dictionary<string, Dictionary<CreatureTemplate.Type, bool>>
+            public bool genocide = false;
+            public Dictionary<string, HashSet<CreatureTemplate.Type>> banlist = new Dictionary<string, HashSet<CreatureTemplate.Type>>
             {
                 {
-                    "Funny", new Dictionary<CreatureTemplate.Type, bool>
+                    "Funny", new HashSet<CreatureTemplate.Type>
                     {
-                        {CreatureTemplate.Type.Slugcat, true}
+                        {CreatureTemplate.Type.Slugcat}
                     }
                 },
                 {
-                    "Hardcore", new Dictionary<CreatureTemplate.Type, bool>
+                    "Hardcore", new HashSet<CreatureTemplate.Type>
                     {
-                        {CreatureTemplate.Type.Slugcat, true},
-                        {CreatureTemplate.Type.GarbageWorm, true},
-                        {CreatureTemplate.Type.CicadaA, true},
-                        {CreatureTemplate.Type.CicadaB, true},
-                        {CreatureTemplate.Type.KingVulture, true},
-                        {CreatureTemplate.Type.Vulture, true},
+                        {CreatureTemplate.Type.Slugcat},
+                        {CreatureTemplate.Type.GarbageWorm},
                     }
                 },
                 {
-                    "Casual", new Dictionary<CreatureTemplate.Type, bool>
+                    "Casual", new HashSet<CreatureTemplate.Type>
                     {
-                        {CreatureTemplate.Type.Slugcat, true},
-                        {CreatureTemplate.Type.GarbageWorm, true},
-                        {CreatureTemplate.Type.TempleGuard, true},
-                        {CreatureTemplate.Type.BigEel, true},
-                        {CreatureTemplate.Type.Deer, true},
-                        {CreatureTemplate.Type.CicadaA, true},
-                        {CreatureTemplate.Type.CicadaB, true},
-                        {CreatureTemplate.Type.KingVulture, true},
-                        {CreatureTemplate.Type.Vulture, true},
+                        {CreatureTemplate.Type.Slugcat},
+                        {CreatureTemplate.Type.GarbageWorm},
+                        {CreatureTemplate.Type.TempleGuard},
+                        {CreatureTemplate.Type.BigEel},
+                        {CreatureTemplate.Type.Deer},
                     }
                 },
                 {
-                    "NoCritters", new Dictionary<CreatureTemplate.Type, bool>
+                    "NoCritters", new HashSet<CreatureTemplate.Type>
                     {
-                        {CreatureTemplate.Type.Slugcat, true},
-                        {CreatureTemplate.Type.GarbageWorm, true},
-                        {CreatureTemplate.Type.Overseer, true},
-                        {CreatureTemplate.Type.TempleGuard, true},
-                        {CreatureTemplate.Type.BigEel, true},
-                        {CreatureTemplate.Type.Deer, true},
-                        {CreatureTemplate.Type.Spider, true},
-                        {CreatureTemplate.Type.Leech, true},
-                        {CreatureTemplate.Type.Fly, true},
-                        {CreatureTemplate.Type.CicadaA, true},
-                        {CreatureTemplate.Type.CicadaB, true},
-                        {CreatureTemplate.Type.KingVulture, true},
-                        {CreatureTemplate.Type.Vulture, true},
+                        {CreatureTemplate.Type.Slugcat},
+                        {CreatureTemplate.Type.GarbageWorm},
+                        {CreatureTemplate.Type.Overseer},
+                        {CreatureTemplate.Type.TempleGuard},
+                        {CreatureTemplate.Type.BigEel},
+                        {CreatureTemplate.Type.Deer},
+                        {CreatureTemplate.Type.Spider},
+                        {CreatureTemplate.Type.Leech},
+                        {CreatureTemplate.Type.Fly},
                     }
                 },
             };
@@ -332,6 +317,7 @@ namespace artificer_rubicon_hell_bonanza
             public bool l = true;
             private bool wantsToDispose;
             public List<Creature> CreaturesToAdd = new List<Creature>();
+            private bool DoRedundancyCreatureCheckThisFrame = false;
 
             public CustomHRGuardManager(Player player, BepInEx.Logging.ManualLogSource log, Artificer_HellOptions options, RainWorldGame rwgInstance)
             {
@@ -342,7 +328,9 @@ namespace artificer_rubicon_hell_bonanza
                 this.myPlayer=player;
                 this.l=this.options.logging.Value;
                 this.currentBanlist=this.options.currentBanlist.Value;
-                this.funmode=this.options.genocideMode.Value;
+                this.genocide=this.options.genocideMode.Value;
+                if(this.options.excludeVultures.Value) this.banlist[currentBanlist].UnionWith(new HashSet<CreatureTemplate.Type>() {CreatureTemplate.Type.Vulture, CreatureTemplate.Type.KingVulture});
+                if(this.options.excludeSquids.Value) this.banlist[currentBanlist].UnionWith(new HashSet<CreatureTemplate.Type>() {CreatureTemplate.Type.CicadaA, CreatureTemplate.Type.CicadaB});
                 if(l) this.log.LogDebug($"created manager instance; current banlist {this.currentBanlist}");
             }
             public void OnRoomEnter(Room room)
@@ -382,6 +370,7 @@ namespace artificer_rubicon_hell_bonanza
                 }
                 if(this.creatureList.Count==0)
                 {
+                    if(l) this.log.LogDebug("LockPlayer is called, but there are no creatures!");
                     return;
                 }
                 if(this.chainedShortcuts.Count==0)
@@ -542,6 +531,11 @@ namespace artificer_rubicon_hell_bonanza
                         //log.LogDebug("i am out of creature update loop!!!!");
                     }
                 }
+                if (this.DoRedundancyCreatureCheckThisFrame)
+                {
+                    this.DoRedundancyCreatureCheck();
+                    this.DoRedundancyCreatureCheckThisFrame=false;
+                }
             }
 
 
@@ -635,11 +629,11 @@ namespace artificer_rubicon_hell_bonanza
                 {
                     ss+=kv.Key.creatureTemplate.name+kv.Key.ID+",";
                 }
-                rs+=$"RedCeck|creatureCount:{this.creatureList.Count};chainCount:{this.multiChains.Count}\ncreatureList:{s}\ncreatureChains:{ss}\n";
+                rs+=$"RedCheck|creatureCount:{this.creatureList.Count};chainCount:{this.multiChains.Count}\ncreatureList:{s}\ncreatureChains:{ss}\n";
                 for(int i = 0;i<this.creatureList.Count;i++)
                 {
                     AbstractCreature c = this.creatureList[i];
-                    if(this.banlist[this.currentBanlist].ContainsKey(c.creatureTemplate.type))
+                    if(this.banlist[this.currentBanlist].Contains(c.creatureTemplate.type))
                     {
                         if(l) this.log.LogMessage($"SOMEHOW a creature from the banlist ended up INSIDE of the creature list! Removing {c.creatureTemplate.name}; {c.ID}");
                         HandleChainsAndStuff(c);
@@ -712,6 +706,9 @@ namespace artificer_rubicon_hell_bonanza
                 {
                     KV.Value?.Dispose();
                 }
+                this.chainedShortcuts=new List<int>();
+                this.creatureList=new List<AbstractCreature>();
+                this.multiChains=new Dictionary<AbstractCreature, MultiChain>(); //total reset for redundancy - creating new empty lists isn't that expensive but ensures that it won't die (it died a lot)
                 //this.wantsToDispose=true;
             }
 
@@ -753,7 +750,7 @@ namespace artificer_rubicon_hell_bonanza
 
             internal void AddNewCreature(Creature creature)
             {
-                if(creature!=null && creature.room==this.room && !creature.dead)
+                if(creature!=null && creature.room==this.room && !creature.dead && !this.creatureList.Contains(creature.abstractCreature))
                 {
                     if (this.myPlayer.inShortcut)
                     {
@@ -769,7 +766,7 @@ namespace artificer_rubicon_hell_bonanza
                         this.LockPlayer(false);
                     };
                     this.AssignNewChain();
-                    this.DoRedundancyCreatureCheck();
+                    this.DoRedundancyCreatureCheckThisFrame=true;
                 }
             }
         }
