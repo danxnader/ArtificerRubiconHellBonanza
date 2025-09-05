@@ -17,7 +17,7 @@ using RewiredConsts;
 
 namespace artificer_rubicon_hell_bonanza
 {
-    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.36")]
+    [BepInPlugin("dannad.lockeveryroom", "Artificer Rubicon Hell Bonanza", "0.0.37")]
     public class Artificer_Hell : BaseUnityPlugin
     {
         public Player player;
