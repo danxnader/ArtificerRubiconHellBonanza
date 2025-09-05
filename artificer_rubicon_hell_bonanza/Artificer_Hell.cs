@@ -117,7 +117,7 @@ namespace artificer_rubicon_hell_bonanza
                             if((self.Template.type==CreatureTemplate.Type.Vulture||self.Template.type==CreatureTemplate.Type.KingVulture)) return;
                             if(this.manager.l)this.Logger.LogDebug($"manager is not null and funmode is on! adding creature to the existing list!");
                             this.manager.AddNewCreature(self);
-                            this.manager.LockPlayer(true);
+                            this.manager.LockPlayer(false);
                         }
                     }
                     else
@@ -175,7 +175,7 @@ namespace artificer_rubicon_hell_bonanza
             }
             if(this.manager!=null&&this.manager.room!=null&&this.manager.room.abstractRoom.name==newRoom.abstractRoom.name)
             {
-                if(this.manager.CreaturesToAdd.Count>0)
+                if(this.manager.CreaturesToAdd.Count>0 && !this.manager.myPlayer.inShortcut)
                 {
                     for(int i = 0;i<this.manager.CreaturesToAdd.Count;i++)
                     {
@@ -266,7 +266,7 @@ namespace artificer_rubicon_hell_bonanza
             public BepInEx.Logging.ManualLogSource log;
             public List<AbstractCreature> creatureList = new List<AbstractCreature>();
             public bool triggered;
-            private Player myPlayer;
+            public Player myPlayer;
             public Dictionary<AbstractCreature, MultiChain> multiChains = new Dictionary<AbstractCreature, MultiChain>();
             public bool chainsActive;
             private Artificer_HellOptions options;
@@ -318,6 +318,7 @@ namespace artificer_rubicon_hell_bonanza
             private bool wantsToDispose;
             public List<Creature> CreaturesToAdd = new List<Creature>();
             private bool DoRedundancyCreatureCheckThisFrame = false;
+            private bool NukeWhenPossible = false;
 
             public CustomHRGuardManager(Player player, BepInEx.Logging.ManualLogSource log, Artificer_HellOptions options, RainWorldGame rwgInstance)
             {
@@ -356,16 +357,16 @@ namespace artificer_rubicon_hell_bonanza
                 //this.GetCreatureList();
                 if(!this.chainsActive)
                 {
-                    if(l) this.log.LogDebug("on room enter2.2");
+                    if(l) this.log.LogDebug("chains are not active, locking player");
                     this.LockPlayer(true);
                 }
             }
 
             public void LockPlayer(bool creaturesRecheck)
             {
-                if (creaturesRecheck)
+                if(creaturesRecheck)
                 {
-                    this.GetCreatureList();
+                    this.GetCreatureList("Lock Player Recheck");
                     //this.DoRedundancyCreatureCheck();
                 }
                 if(this.creatureList.Count==0)
@@ -387,19 +388,22 @@ namespace artificer_rubicon_hell_bonanza
                 }
                 for(int i = 0;i<(this.creatureList.Count>=3 ? 3 : this.creatureList.Count);i++)
                 {
-                    if(!this.multiChains.ContainsKey(this.creatureList[i]))this.multiChains.Add(this.creatureList[i], new MultiChain(this.creatureList[i], this.room, this.log, this.chainedShortcuts));
+                    if(!this.multiChains.ContainsKey(this.creatureList[i])) this.multiChains.Add(this.creatureList[i], new MultiChain(this.creatureList[i], this.room, this.log, this.chainedShortcuts));
                 }
-                if(l) this.log.LogDebug($"total shortcuts tracked:{this.chainedShortcuts.Count}");
-                this.room.PlaySound(MoreSlugcatsEnums.MSCSoundID.Chain_Lock, 0f, 1f, global::UnityEngine.Random.value*0.5f+0.8f);
-                this.triggered=true;
-                if(l) this.log.LogDebug("setting triggered to TRUE");
-                this.chainsActive=true;
-                this.ConfuseCreatures();
+                if(!this.triggered)
+                {
+                    if(l) this.log.LogDebug($"total shortcuts tracked:{this.chainedShortcuts.Count}");
+                    this.room.PlaySound(MoreSlugcatsEnums.MSCSoundID.Chain_Lock, 0f, 1f, global::UnityEngine.Random.value*0.5f+0.8f);
+                    this.triggered=true;
+                    if(l) this.log.LogDebug("setting triggered to TRUE");
+                    this.chainsActive=true;
+                    this.ConfuseCreatures();
+                }
             }
 
-            private void GetCreatureList()
+            private void GetCreatureList(string a)
             {
-                if(l) log.LogDebug("updating creature list");
+                if(l) log.LogDebug($"updating creature list from {a}");
                 if(this.room.abstractRoom.creatures.Count==0) return;
                 //if(l)
                 //{
@@ -410,6 +414,7 @@ namespace artificer_rubicon_hell_bonanza
                 //    }
                 //    this.log.LogMessage($"current banlist in vulturespotted:\n{s}");
                 //}
+                this.creatureList= new List<AbstractCreature>();
                 for(int i = 0;i<this.room.abstractRoom.creatures.Count;i++)
                 {
                     AbstractCreature creature = this.room.abstractRoom.creatures[i];
@@ -422,8 +427,8 @@ namespace artificer_rubicon_hell_bonanza
                                 Overseer overseer = (Overseer)creature.realizedCreature;
                                 if(overseer.PlayerGuide) continue;
                             }
-                            if(l) this.log.LogDebug($"added creature {creature}");
-                            this.creatureList.Add(creature);
+                            if(l) this.log.LogDebug($"trying to add creature: {creature}");
+                            this.AddNewCreature(creature.realizedCreature);
                         }
                     }
                 }
@@ -451,10 +456,6 @@ namespace artificer_rubicon_hell_bonanza
                     if(this.triggered)
                     {
                         this.activeTime++;
-                        if(this.activeTime%400==0)
-                        {
-                            this.DoRedundancyCreatureCheck();
-                        }
                         if(this.options.timer.Value!=-1&&this.activeTime/40>this.options.timer.Value)
                         {
                             this.FreePlayer();
@@ -529,6 +530,10 @@ namespace artificer_rubicon_hell_bonanza
                             }
                         }
                         //log.LogDebug("i am out of creature update loop!!!!");
+                        if(this.activeTime%400==0)
+                        {
+                            this.DoRedundancyCreatureCheckThisFrame = true;
+                        }
                     }
                 }
                 if (this.DoRedundancyCreatureCheckThisFrame)
@@ -594,26 +599,43 @@ namespace artificer_rubicon_hell_bonanza
                         this.multiChains.Remove(c);
                     }
                 }
-                if(this.creatureList.Count!=this.multiChains.Count && this.multiChains.Count > 3)
+                void NuclearOption()
+                {
+                    if(l) this.log.LogMessage("It's still shit!!! Nuclear option!! Regenerating the whole list!!");
+                    foreach(KeyValuePair<AbstractCreature, MultiChain> chain in this.multiChains)
+                    {
+                        chain.Value.Dispose();
+                    }
+                    this.multiChains=null;
+                    this.multiChains=new Dictionary<AbstractCreature, MultiChain>();
+                    this.creatureList=null;
+                    this.creatureList=new List<AbstractCreature>();
+                    this.GetCreatureList("Nuclear Option");
+                    for(int i = 0;i<(this.creatureList.Count>=3 ? 3 : this.creatureList.Count);i++)
+                    {
+                        this.AssignNewChain();
+                    }
+                    this.NukeWhenPossible=false;
+                }
+                if (!this.myPlayer.inShortcut && this.NukeWhenPossible)
+                {
+                    NuclearOption();
+                }
+                if(this.creatureList.Count!=this.multiChains.Count && this.multiChains.Count < 4)
                 {
                     int check = this.creatureList.Count-this.multiChains.Count;
                     if(l) this.log.LogMessage("Multichain-creature list disparity! Calling assign chains");
                     this.AssignNewChain();
                     if(check ==this.creatureList.Count-this.multiChains.Count)
                     {
-                        if(l) this.log.LogMessage("It's still shit!!! Nuclear option!! Regenerating the whole list!!");
-                        foreach(KeyValuePair<AbstractCreature, MultiChain> chain in this.multiChains)
+                        if(!this.myPlayer.inShortcut)
                         {
-                            chain.Value.Dispose();
+                            NuclearOption();
                         }
-                        this.multiChains=null;
-                        this.multiChains=new Dictionary<AbstractCreature, MultiChain>();
-                        this.creatureList=null;
-                        this.creatureList=new List<AbstractCreature>();
-                        this.GetCreatureList();
-                        for(int i = 0;i<(this.creatureList.Count>=3 ? 3 : this.creatureList.Count);i++)
+                        else
                         {
-                            this.AssignNewChain();
+                            this.log.LogMessage("Player is in a pipe!!! Delay nuclear detonation until safe exit!!!!");
+                            this.NukeWhenPossible=true;
                         }
                     }
                 }
@@ -675,6 +697,7 @@ namespace artificer_rubicon_hell_bonanza
                     this.FreePlayer();
                 }
                 if(l) log.LogDebug(rs);
+               
             }
 
             //public MultiChain GetChainByCreature(AbstractCreature creature)
@@ -750,15 +773,29 @@ namespace artificer_rubicon_hell_bonanza
 
             internal void AddNewCreature(Creature creature)
             {
-                if(creature!=null && creature.room==this.room && !creature.dead && !this.creatureList.Contains(creature.abstractCreature))
+                if(creature!=null && creature.room==this.room && !creature.dead)
                 {
+                    if (this.creatureList.Contains(creature.abstractCreature))
+                    {
+                        if(l) this.log.LogMessage($"Creature {creature.Template.name} is in banlist, not adding.");
+                        return;
+                    }
+                    if (creature is Lizard)
+                    {
+                        Lizard lizard = creature as Lizard;
+                        if (lizard.AI.friendTracker.friend==this.myPlayer)
+                        {
+                            if(l) this.log.LogDebug("Lizard is friend! Don't add to the enemy list");
+                            return;
+                        }
+                    }
                     if (this.myPlayer.inShortcut)
                     {
                         this.CreaturesToAdd.Add(creature);
                         if(l) this.log.LogDebug($"added a creature to the OnEnter buffer: {creature.abstractCreature.creatureTemplate.name} {creature.abstractCreature.ID}");
                         return;
                     }
-                    if(l) this.log.LogDebug($"Added new creature on enter! {creature.abstractCreature.creatureTemplate.name}|{creature.abstractCreature.ID}");
+                    if(l) this.log.LogDebug($"Added new creature! {creature.abstractCreature.creatureTemplate.name}|{creature.abstractCreature.ID}");
                     this.room.PlaySound(MoreSlugcatsEnums.MSCSoundID.Chain_Lock, 0f, 0.8f, global::UnityEngine.Random.value*0.5f+5f);
                     if(!this.creatureList.Contains(creature.abstractCreature)) this.creatureList.Add(creature.abstractCreature);
                     if(this.triggered==false)
@@ -767,6 +804,10 @@ namespace artificer_rubicon_hell_bonanza
                     };
                     this.AssignNewChain();
                     this.DoRedundancyCreatureCheckThisFrame=true;
+                }
+                else
+                {
+                    if(l) this.log.LogMessage("Either manager is fucked, or creature entered a wrong room, or creature is dead - not adding");
                 }
             }
         }
